@@ -30,11 +30,9 @@ void h4setup() {
     Serial.println("3. did you change the chipSelect pin to match your shield or module?");
     Serial.println("Note: press reset or reopen this serial monitor after fixing your issue!");
     // Replace with your network credentials
-    const char* ssid     = "pmeidtw >_< - Error";
+    const char* ssid = "pmeidtw >_< - Error";
     // begin softAP
     WiFi.softAP(ssid, NULL);
-    // Set web server port number to 80
-    AsyncWebServer server(80);
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send_P(200, "text/html", cardNotFound);
@@ -46,13 +44,13 @@ void h4setup() {
   else {
     Serial.println("initialization done.");
     // check if setup has been done
-    if (!SD.exists("configure.json")) {
+    if (!SD.exists("/credentials.json")) {
       initalStart();
     }
 
     // load configurtion to acquire AP information
     // Open file for reading
-    File file = SD.open("configure.json");
+    File file = SD.open("/credentials.json");
 
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
@@ -64,9 +62,6 @@ void h4setup() {
 
     // begin softAP
     WiFi.softAP(doc["ssid"].as<String>().c_str(), doc["password"].as<String>().c_str());
-
-    // Set web server port number to 80
-    AsyncWebServer server(80);
     
     // acquire esp32 ip address
     IPAddress IP = WiFi.softAPIP();
@@ -143,6 +138,8 @@ void h4setup() {
         } 
       },request));
     });
+
+    // TODO: add route for getting sdcard info + server info
 
     // begin serving static files
     server.serveStatic("/", SD, "/");

@@ -7,40 +7,8 @@
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 
-void initalStart() {
-    // Replace with your network credentials
-    const char* ssid = "pmeidtw >_< - Welcome";
-    // begin softAP
-    WiFi.softAP(ssid, NULL);
-    // Set web server port number to 80
-    AsyncWebServer server(80);
-
-    // server route
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send_P(200, "text/html", inital_html);
-    });
-
-    server.on("/configure", HTTP_GET, [](AsyncWebServerRequest *request) {
-        String ssid = "";
-        String password = "";
-        if (request->hasParam("ssid")) ssid += request->getParam("ssid")->value();
-        if (request->hasParam("password")) passsword += request->getParam("password")->value();
-        StaticJsonDocument(512) credentials;
-        credentials["ssid"] = ssid;
-        credentials["password"] = password;
-        SD.remove("credentials.json");
-        File file = SD.open(filename, FILE_WRITE);
-        if (!file) {
-            Serial.println(F("Failed to create file"));
-            return;
-        }
-        serializeJson(credentials, file);
-        file.close();
-        // reset esp32
-        ESP.restart();
-    });
-    // implement sdcard info
-}
+// Set web server port number to 80
+AsyncWebServer server(80);
 
 const char inital_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -205,9 +173,8 @@ const char inital_html[] PROGMEM = R"rawliteral(
       let password = document.querySelector("#password").value
 
       var xhr = new XMLHttpRequest();
-      xhr.open("POST", "/configure", true);
-      xhr.setRequestHeader("Content-type", "application/json");
-      xhr.send(JSON.stringify({"ssid": ssid, "password": password}));
+      xhr.open("GET", `/configure?ssid=${ssid}&password=${password}`, true);
+      xhr.send();
 
       alert("microNAS will now restart to apply the changes!");
       location.replace("/");
@@ -216,3 +183,46 @@ const char inital_html[] PROGMEM = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
+// TODO: merging this part into the main code
+void initalStart() {
+
+    // Replace with your network credentials
+    const char* ssid = "pmeidtw >_< - Welcome";
+
+    // begin softAP
+    WiFi.softAP(ssid, NULL);
+
+    // server route
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send_P(200, "text/html", inital_html);
+    });
+
+    server.on("/configure", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String ssid = "";
+        String password = "";
+        if (request->hasParam("ssid")) ssid += request->getParam("ssid")->value();
+        if (request->hasParam("password")) password += request->getParam("password")->value();
+        StaticJsonDocument<512> credentials;
+        credentials["ssid"] = ssid;
+        credentials["password"] = password;
+        SD.remove("/credentials.json");
+        File file = SD.open("/credentials.json", FILE_WRITE);
+        if (!file) {
+            Serial.println(F("Failed to create file"));
+            return;
+        }
+        serializeJson(credentials, file);
+        file.close();
+        // reset esp32
+        ESP.restart();
+    });
+
+    // TODO: add route for getting sdcard info
+
+    // implement sdcard info
+    server.begin();
+
+    // prevent main program from running
+    while (true);
+}
